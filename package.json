@@ -11,7 +11,8 @@
     "test": "jest",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed:admin": "tsx scripts/seed-admin.cli.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.251",
@@ -45,6 +46,7 @@
     "@types/pg": "^8.11.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.0",
     "drizzle-pgmem": "^0.6.2",
     "eslint": "^9",
@@ -57,6 +59,7 @@
     "prettier": "^3.9.6",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.12",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   },
   "allowScripts": {

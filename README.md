@@ -69,6 +69,7 @@ PostgreSQL via Drizzle ORM. It provides two frontend route trees:
 | `npm run db:push`                 | Push the Drizzle schema to the database directly (dev) |
 | `npm run db:generate`             | Generate a migration file from schema changes          |
 | `npm run db:migrate`              | Apply pending migrations                               |
+| `npm run db:seed:admin`           | Seed the admin user (`admin@yopmail.com`)              |
 
 ## Environment Variables
 
