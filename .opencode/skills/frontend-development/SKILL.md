@@ -17,6 +17,10 @@ description: Skill to use while working on frontend related tasks. It has guidel
 
 - Follow the standard next js frontend architecture.
 - Follow ATOMIC component architecture.
+- For any task, identify required reusable atoms, molecules and organisms. Confirm with user.
+- Then work on the actual task. For example:
+  If you are working on registration, you should Idenfify textfield, label as atoms. Form as organism. Etc.
+- Use react hook form library for forms and validations with zod.
 
 ### State management
 
