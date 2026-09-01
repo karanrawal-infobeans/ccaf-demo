@@ -19,8 +19,9 @@ description: Skill to use while working on backend related tasks. It has guideli
 
 ### Database
 
-- The project only uses in memory mongodb database. Use the relavant npm package.
-- Use drizzle to interact with database.
+- The project uses PostgreSQL (see Docker Compose) and interacts with it via Drizzle ORM.
+- Schema lives in `lib/db/schema.ts`; the client is in `lib/db/index.ts`.
+- Tests use an in-memory Postgres via pg-mem (see `test/db.ts`) — never mock the database for integration-style tests.
 
 ### MCP
 

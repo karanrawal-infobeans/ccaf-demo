@@ -1,0 +1,3 @@
+# Drizzle Kit generated migration snapshots must not be reformatted:
+# formatting changes would break drizzle-kit's schema-diffing.
+drizzle/meta/

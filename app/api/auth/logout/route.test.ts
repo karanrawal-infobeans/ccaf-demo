@@ -1,17 +1,11 @@
 /**
  * Tests for POST /api/auth/logout.
- * Mocks the database so no live DB is required.
+ * Uses an in-memory Postgres (pg-mem) so no live DB is required.
  */
-jest.mock("@/lib/db", () => ({
-  __esModule: true,
-  default: {
-    user: {
-      create: jest.fn(),
-      findByEmail: jest.fn(),
-      findById: jest.fn(),
-    },
-  },
-}));
+jest.mock("@/lib/db", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("@/test/db")
+);
 
 jest.mock("bcryptjs", () => ({
   hash: jest.fn(),
@@ -21,6 +15,7 @@ jest.mock("bcryptjs", () => ({
 import { POST } from "./route";
 import { HTTP_STATUS } from "@/lib/constants/http";
 import { AUTH_COOKIE_NAME } from "@/lib/auth/constants";
+import { resetDb } from "@/test/db";
 
 function makeReq() {
   return {
@@ -32,6 +27,10 @@ function makeReq() {
     method: "POST",
   } as unknown as Parameters<typeof POST>[0];
 }
+
+beforeEach(async () => {
+  await resetDb();
+});
 
 describe("POST /api/auth/logout", () => {
   it("clears the auth cookie (maxAge 0)", async () => {

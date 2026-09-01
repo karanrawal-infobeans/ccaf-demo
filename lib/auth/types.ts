@@ -2,7 +2,7 @@
  * Zod schemas and derived TypeScript types for auth DTOs.
  */
 import { z } from "zod";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/db/schema";
 
 export const RegisterSchema = z.object({
   email: z.string().email("Invalid email"),

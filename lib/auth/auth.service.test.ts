@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import { AuthService } from "./auth.service";
 import { EmailAlreadyRegisteredError, InvalidCredentialsError } from "./errors";
 import type { IUserRepository } from "./user.repository";
-import type { User } from "@prisma/client";
+import type { User } from "@/lib/db/schema";
 
 const JWT_SECRET = "test-secret";
 
@@ -16,7 +16,7 @@ beforeAll(() => {
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
-    id: "abc123",
+    id: "11111111-1111-4111-8111-111111111111",
     email: "user@example.com",
     name: "User",
     password: bcrypt.hashSync("password123", 1),

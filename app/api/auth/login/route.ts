@@ -3,7 +3,7 @@
  */
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
-import { PrismaUserRepository } from "@/lib/auth/user.repository";
+import { DrizzleUserRepository } from "@/lib/auth/user.repository";
 import { AuthService } from "@/lib/auth/auth.service";
 import { LoginSchema } from "@/lib/auth/types";
 import { withApiHandler } from "@/lib/api/with-api-handler";
@@ -17,7 +17,7 @@ import {
 export const POST = withApiHandler({
   bodySchema: LoginSchema,
   handler: async ({ body }) => {
-    const repo = new PrismaUserRepository(db);
+    const repo = new DrizzleUserRepository(db);
     const service = new AuthService(repo);
     const { token, user } = await service.login(body);
 

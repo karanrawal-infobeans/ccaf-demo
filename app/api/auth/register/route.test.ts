@@ -1,16 +1,12 @@
 /**
  * Tests for POST /api/auth/register.
- * Mocks the database and hashing so no live DB is required.
+ * Uses an in-memory Postgres (pg-mem) so no live DB is required. bcrypt is
+ * mocked to keep hashing instant.
  */
-jest.mock("@/lib/db", () => ({
-  __esModule: true,
-  default: {
-    user: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-    },
-  },
-}));
+jest.mock("@/lib/db", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("@/test/db")
+);
 
 jest.mock("bcryptjs", () => ({
   hash: jest.fn().mockResolvedValue("hashed-password"),
@@ -19,14 +15,9 @@ jest.mock("bcryptjs", () => ({
 
 import { POST } from "./route";
 import { HTTP_STATUS } from "@/lib/constants/http";
-import db from "@/lib/db";
-
-const mockedDb = db as unknown as {
-  user: {
-    create: jest.Mock;
-    findUnique: jest.Mock;
-  };
-};
+import { getTestDb, resetDb } from "@/test/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 function makeReq(body: unknown) {
   return {
@@ -39,22 +30,12 @@ function makeReq(body: unknown) {
   } as unknown as Parameters<typeof POST>[0];
 }
 
-beforeEach(() => {
-  jest.clearAllMocks();
+beforeEach(async () => {
+  await resetDb();
 });
 
 describe("POST /api/auth/register", () => {
   it("creates a CUSTOMER and returns 201", async () => {
-    (mockedDb.user.findUnique as jest.Mock).mockResolvedValue(null);
-    (mockedDb.user.create as jest.Mock).mockResolvedValue({
-      id: "new-user",
-      email: "new@example.com",
-      name: "New",
-      role: "CUSTOMER",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
     const res = await POST(
       makeReq({
         email: "new@example.com",
@@ -67,7 +48,15 @@ describe("POST /api/auth/register", () => {
     expect(res.status).toBe(HTTP_STATUS.CREATED);
     const body = await res.json();
     expect(body.user.role).toBe("CUSTOMER");
-    expect(mockedDb.user.create).toHaveBeenCalled();
+    expect(body.user.email).toBe("new@example.com");
+
+    const [persisted] = await getTestDb()
+      .select()
+      .from(users)
+      .where(eq(users.email, "new@example.com"))
+      .limit(1);
+    expect(persisted).toBeDefined();
+    expect(persisted.name).toBe("New");
   });
 
   it("returns 400 for invalid input", async () => {

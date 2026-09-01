@@ -9,7 +9,7 @@ import {
 } from "./jwt";
 import { UnauthorizedError, ForbiddenError } from "@/lib/errors";
 import type { IUserRepository } from "./user.repository";
-import type { User } from "@prisma/client";
+import type { User } from "@/lib/db/schema";
 import { AUTH_COOKIE_NAME } from "./constants";
 
 const JWT_SECRET = "jwt-test-secret";
@@ -20,7 +20,7 @@ beforeAll(() => {
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
-    id: "u1",
+    id: "11111111-1111-4111-8111-111111111111",
     email: "user@example.com",
     name: "User",
     password: "hashed",
@@ -45,12 +45,12 @@ function makeReq(cookieValue?: string) {
 describe("signAccessToken / verifyAccessToken", () => {
   it("round-trips claims through a signed token", () => {
     const token = signAccessToken({
-      userId: "u1",
+      userId: "11111111-1111-4111-8111-111111111111",
       email: "user@example.com",
       role: "CUSTOMER",
     });
     const decoded = verifyAccessToken(token);
-    expect(decoded.userId).toBe("u1");
+    expect(decoded.userId).toBe("11111111-1111-4111-8111-111111111111");
     expect(decoded.email).toBe("user@example.com");
     expect(decoded.role).toBe("CUSTOMER");
   });
@@ -90,7 +90,7 @@ describe("getAuthenticatedUser", () => {
 
   it("returns the resolved user for a valid token", async () => {
     const token = signAccessToken({
-      userId: "u1",
+      userId: "11111111-1111-4111-8111-111111111111",
       email: "user@example.com",
       role: "CUSTOMER",
     });
@@ -104,13 +104,13 @@ describe("getAuthenticatedUser", () => {
 
     const user = await getAuthenticatedUser(req, repo);
     expect(cookies.get).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
-    expect(user.id).toBe("u1");
+    expect(user.id).toBe("11111111-1111-4111-8111-111111111111");
     expect(user.role).toBe("CUSTOMER");
   });
 
   it("throws UnauthorizedError when the user no longer exists", async () => {
     const token = signAccessToken({
-      userId: "u1",
+      userId: "11111111-1111-4111-8111-111111111111",
       email: "user@example.com",
       role: "CUSTOMER",
     });

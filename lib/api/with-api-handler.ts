@@ -9,9 +9,9 @@ import {
   type AuthenticatedUser,
 } from "@/lib/auth/jwt";
 import type { IUserRepository } from "@/lib/auth/user.repository";
-import { PrismaUserRepository } from "@/lib/auth/user.repository";
+import { DrizzleUserRepository } from "@/lib/auth/user.repository";
 import db from "@/lib/db";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/db/schema";
 
 type HandlerContext<B, Q, P> = {
   req: NextRequest;
@@ -27,7 +27,7 @@ type ApiHandlerOptions<B, Q, P> = {
   pathParamsSchema?: ZodSchema<P>;
   /** Require a valid JWT; pass a Role to restrict access to that role. */
   requireAuth?: boolean | Role;
-  /** Repository used to resolve the authenticated user (defaults to Prisma). */
+  /** Repository used to resolve the authenticated user (defaults to Drizzle). */
   userRepo?: IUserRepository;
   handler: (ctx: HandlerContext<B, Q, P>) => Promise<NextResponse>;
 };
@@ -55,7 +55,7 @@ function requiredRole(requireAuth: boolean | Role | undefined): Role | null {
 export function withApiHandler<B = undefined, Q = undefined, P = undefined>(
   options: ApiHandlerOptions<B, Q, P>
 ) {
-  const repo = options.userRepo ?? new PrismaUserRepository(db);
+  const repo = options.userRepo ?? new DrizzleUserRepository(db);
   const role = requiredRole(options.requireAuth);
 
   return async (

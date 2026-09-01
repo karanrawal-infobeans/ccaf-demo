@@ -1,13 +1,18 @@
 /**
- * User repository interface and Prisma-backed implementation.
+ * User repository interface and Drizzle-backed implementation.
  */
-import type { PrismaClient, Role, User } from "@prisma/client";
+import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
+import { users, type User, type NewUser } from "@/lib/db/schema";
+import type { DrizzleDb } from "@/lib/db";
+
+/** Data required to create a new user record. */
 export interface CreateUserData {
   email: string;
   name: string;
   password: string;
-  role?: Role;
+  role?: NewUser["role"];
 }
 
 export interface IUserRepository {
@@ -16,21 +21,35 @@ export interface IUserRepository {
   findById(id: string): Promise<User | null>;
 }
 
-export class PrismaUserRepository implements IUserRepository {
-  constructor(private readonly db: PrismaClient) {}
+export class DrizzleUserRepository implements IUserRepository {
+  constructor(private readonly db: DrizzleDb) {}
 
   /** @inheritdoc */
-  create(data: CreateUserData): Promise<User> {
-    return this.db.user.create({ data });
+  async create(data: CreateUserData): Promise<User> {
+    const [user] = await this.db
+      .insert(users)
+      .values({ id: randomUUID(), ...data })
+      .returning();
+    return user;
   }
 
   /** @inheritdoc */
-  findByEmail(email: string): Promise<User | null> {
-    return this.db.user.findUnique({ where: { email } });
+  async findByEmail(email: string): Promise<User | null> {
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    return user ?? null;
   }
 
   /** @inheritdoc */
-  findById(id: string): Promise<User | null> {
-    return this.db.user.findUnique({ where: { id } });
+  async findById(id: string): Promise<User | null> {
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    return user ?? null;
   }
 }

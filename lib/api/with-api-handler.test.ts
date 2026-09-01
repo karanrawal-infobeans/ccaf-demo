@@ -1,12 +1,19 @@
 /**
  * Unit tests for the withApiHandler route wrapper (auth + validation).
+ * The real DB is never queried here (a userRepo is always injected), so we
+ * alias @/lib/db to the in-memory test database to avoid a live connection.
  */
+jest.mock("@/lib/db", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("@/test/db")
+);
+
 import { withApiHandler } from "./with-api-handler";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { HTTP_STATUS } from "@/lib/constants/http";
 import type { IUserRepository } from "@/lib/auth/user.repository";
-import type { User } from "@prisma/client";
+import type { User } from "@/lib/db/schema";
 import { signAccessToken } from "@/lib/auth/jwt";
 
 const JWT_SECRET = "handler-test-secret";
@@ -17,7 +24,7 @@ beforeAll(() => {
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {
-    id: "u1",
+    id: "11111111-1111-4111-8111-111111111111",
     email: "user@example.com",
     name: "User",
     password: "hashed",
@@ -96,7 +103,10 @@ describe("withApiHandler requireAuth", () => {
 
     const res = await handler(makeReq({}, tokenFor(makeUser())), {});
     expect(res.status).toBe(HTTP_STATUS.OK);
-    expect(await res.json()).toEqual({ userId: "u1", role: "CUSTOMER" });
+    expect(await res.json()).toEqual({
+      userId: "11111111-1111-4111-8111-111111111111",
+      role: "CUSTOMER",
+    });
   });
 
   it("returns 401 when the auth cookie is missing", async () => {

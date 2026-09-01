@@ -1,16 +1,11 @@
 /**
  * Tests for POST /api/auth/login.
- * Mocks the database and hashing so no live DB is required.
+ * Uses an in-memory Postgres (pg-mem) and mocks bcrypt comparison.
  */
-jest.mock("@/lib/db", () => ({
-  __esModule: true,
-  default: {
-    user: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-    },
-  },
-}));
+jest.mock("@/lib/db", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("@/test/db")
+);
 
 jest.mock("bcryptjs", () => ({
   hash: jest.fn(),
@@ -18,16 +13,11 @@ jest.mock("bcryptjs", () => ({
 }));
 
 import { POST } from "./route";
+import { randomUUID } from "crypto";
 import { HTTP_STATUS } from "@/lib/constants/http";
 import { AUTH_COOKIE_NAME } from "@/lib/auth/constants";
-import db from "@/lib/db";
-
-const mockedDb = db as unknown as {
-  user: {
-    create: jest.Mock;
-    findUnique: jest.Mock;
-  };
-};
+import { getTestDb, resetDb } from "@/test/db";
+import { users } from "@/lib/db/schema";
 
 function makeReq(body: unknown) {
   return {
@@ -40,22 +30,25 @@ function makeReq(body: unknown) {
   } as unknown as Parameters<typeof POST>[0];
 }
 
-beforeEach(() => {
-  jest.clearAllMocks();
+/** Seeds a customer user directly into the in-memory database. */
+async function seedUser(email: string) {
+  await getTestDb().insert(users).values({
+    id: randomUUID(),
+    email,
+    name: "User",
+    password: "hashed-password",
+    role: "CUSTOMER",
+  });
+}
+
+beforeEach(async () => {
+  await resetDb();
   process.env.JWT_SECRET = "login-test-secret";
 });
 
 describe("POST /api/auth/login", () => {
   it("sets the auth cookie on successful login", async () => {
-    (mockedDb.user.findUnique as jest.Mock).mockResolvedValue({
-      id: "u1",
-      email: "user@example.com",
-      name: "User",
-      role: "CUSTOMER",
-      password: "hashed",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    await seedUser("user@example.com");
 
     const res = await POST(
       makeReq({ email: "user@example.com", password: "password123" }),
@@ -70,8 +63,6 @@ describe("POST /api/auth/login", () => {
   });
 
   it("returns 401 for unknown credentials", async () => {
-    (mockedDb.user.findUnique as jest.Mock).mockResolvedValue(null);
-
     const res = await POST(
       makeReq({ email: "nobody@example.com", password: "password123" }),
       {}

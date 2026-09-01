@@ -6,12 +6,12 @@ import { HTTP_STATUS } from "@/lib/constants/http";
 import { AUTH_COOKIE_NAME, AUTH_COOKIE_OPTIONS } from "@/lib/auth/constants";
 import { withApiHandler } from "@/lib/api/with-api-handler";
 import db from "@/lib/db";
-import { PrismaUserRepository } from "@/lib/auth/user.repository";
+import { DrizzleUserRepository } from "@/lib/auth/user.repository";
 import { AuthService } from "@/lib/auth/auth.service";
 
 export const POST = withApiHandler({
   handler: async () => {
-    const repo = new PrismaUserRepository(db);
+    const repo = new DrizzleUserRepository(db);
     const service = new AuthService(repo);
     await service.logout();
 

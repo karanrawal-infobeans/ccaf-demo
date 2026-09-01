@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ccaf-demo
 
-## Getting Started
+A shopping website clone built with Next.js (App Router), React 19, and
+PostgreSQL via Drizzle ORM. It provides two frontend route trees:
 
-First, run the development server:
+- `/` — customer/end-user routes (home, login, registration)
+- `/system` — backoffice routes (dashboard, login, registration)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Stack
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Framework**: Next.js 16 + React 19 (TypeScript)
+- **Database**: PostgreSQL 17 (Docker Compose)
+- **ORM**: Drizzle ORM (schema-as-code in `lib/db/schema.ts`)
+- **Validation**: zod
+- **Testing**: Jest + ts-jest with an in-memory Postgres (pg-mem) — no live
+  database is required to run tests
+- **Logging**: pino
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Prerequisites
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Node.js 18.17+
+- Docker (for the local PostgreSQL via Compose)
 
-## Learn More
+## Setup
 
-To learn more about Next.js, take a look at the following resources:
+1. Install dependencies:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```bash
+   npm install
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2. Copy the environment template and adjust values as needed:
 
-## Deploy on Vercel
+   ```bash
+   cp env.example .env
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. Start PostgreSQL:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   docker compose up -d
+   ```
+
+4. Apply the database schema:
+
+   ```bash
+   npm run db:push
+   ```
+
+   > For an auditable migration history instead of a direct push, use
+   > `npm run db:generate` then `npm run db:migrate`.
+
+5. Run the dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+   Open http://localhost:3000.
+
+## Scripts
+
+| Command                           | Description                                            |
+| --------------------------------- | ------------------------------------------------------ |
+| `npm run dev` / `build` / `start` | Next.js dev server / production build / start          |
+| `npm test`                        | Run the Jest test suite (uses in-memory Postgres)      |
+| `npm run lint`                    | ESLint + Prettier checks                               |
+| `npm run format`                  | Auto-format with Prettier                              |
+| `npm run db:push`                 | Push the Drizzle schema to the database directly (dev) |
+| `npm run db:generate`             | Generate a migration file from schema changes          |
+| `npm run db:migrate`              | Apply pending migrations                               |
+
+## Environment Variables
+
+See `env.example`. Notable keys:
+
+- `DATABASE_URL` — PostgreSQL connection string
+- `JWT_SECRET` — signing secret for auth tokens
+- `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` — Docker Compose DB config
+- `LOG_LEVEL` — pino log level
+
+## Architecture
+
+Follows a layered backend (Routes → Service → Repository → Drizzle) with
+dependency injection:
+
+- `app/api/**` — Next.js route handlers, wrapped by `withApiHandler`
+- `lib/auth/` — auth service, repository, JWT helpers, zod DTOs
+- `lib/db/` — Drizzle schema (`schema.ts`) and client (`index.ts`)
+- `test/db.ts` — in-memory Postgres (pg-mem) for tests

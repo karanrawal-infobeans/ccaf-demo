@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server";
 import { ConfigurationError } from "@/lib/auth/errors";
 import { UnauthorizedError, ForbiddenError } from "@/lib/errors";
 import { JWT_TOKEN_TTL, AUTH_COOKIE_NAME } from "@/lib/auth/constants";
-import type { Role, User } from "@prisma/client";
+import type { Role, User } from "@/lib/db/schema";
 import type { IUserRepository } from "@/lib/auth/user.repository";
 
 /** Claims embedded in an access token. */

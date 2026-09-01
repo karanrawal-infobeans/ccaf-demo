@@ -1,17 +1,12 @@
 /**
  * Tests for POST /api/system/auth/register.
- * Validates admin-only access and role-aware user creation.
+ * Validates admin-only access and role-aware user creation against an
+ * in-memory Postgres (pg-mem). bcrypt is mocked for speed.
  */
-jest.mock("@/lib/db", () => ({
-  __esModule: true,
-  default: {
-    user: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findById: jest.fn(),
-    },
-  },
-}));
+jest.mock("@/lib/db", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("@/test/db")
+);
 
 jest.mock("bcryptjs", () => ({
   hash: jest.fn().mockResolvedValue("hashed-password"),
@@ -20,7 +15,8 @@ jest.mock("bcryptjs", () => ({
 
 import { POST } from "./route";
 import { HTTP_STATUS } from "@/lib/constants/http";
-import db from "@/lib/db";
+import { getTestDb, resetDb } from "@/test/db";
+import { users } from "@/lib/db/schema";
 import { signAccessToken } from "@/lib/auth/jwt";
 
 const JWT_SECRET = "system-register-test-secret";
@@ -29,12 +25,9 @@ beforeAll(() => {
   process.env.JWT_SECRET = JWT_SECRET;
 });
 
-const mockedDb = db as unknown as {
-  user: {
-    create: jest.Mock;
-    findUnique: jest.Mock;
-  };
-};
+beforeEach(async () => {
+  await resetDb();
+});
 
 function makeReq(body: unknown, cookie?: string) {
   return {
@@ -50,41 +43,31 @@ function makeReq(body: unknown, cookie?: string) {
   } as unknown as Parameters<typeof POST>[0];
 }
 
-function adminToken(): string {
-  return signAccessToken({
-    userId: "admin-1",
-    email: "a@b.com",
-    role: "ADMIN",
-  });
-}
-
-/** Signs a token for the given mock user. */
-function tokenFor(user: { id: string; email: string; role: string }): string {
-  return signAccessToken({
-    userId: user.id,
+/** Seeds a user directly into the in-memory database. */
+async function seedUser(user: {
+  id: string;
+  email: string;
+  name: string;
+  role: "CUSTOMER" | "ADMIN" | "CUSTOMER_SUPPORT";
+}) {
+  await getTestDb().insert(users).values({
+    id: user.id,
     email: user.email,
-    role: user.role as never,
+    name: user.name,
+    password: "hashed-password",
+    role: user.role,
   });
 }
 
-/** Mocks findUnique to resolve users by id and emails by their where clause. */
-function mockUsersByIdAndByEmail(users: Record<string, unknown>) {
-  (mockedDb.user.findUnique as jest.Mock).mockImplementation(
-    ({ where }: { where: Record<string, string> }) => {
-      const key =
-        "id" in where ? where.id : "email" in where ? where.email : "";
-      return Promise.resolve(users[key] ?? null);
-    }
-  );
-}
+type UsersRole = "CUSTOMER" | "ADMIN" | "CUSTOMER_SUPPORT";
 
-beforeEach(() => {
-  jest.clearAllMocks();
-});
+/** Builds a valid JWT for a seeded user id. */
+function tokenForUser(id: string, email: string, role: UsersRole): string {
+  return signAccessToken({ userId: id, email, role });
+}
 
 describe("POST /api/system/auth/register", () => {
   it("returns 401 when not authenticated", async () => {
-    mockUsersByIdAndByEmail({});
     const res = await POST(
       makeReq({
         email: "new@example.com",
@@ -98,13 +81,12 @@ describe("POST /api/system/auth/register", () => {
   });
 
   it("returns 403 for a non-admin user", async () => {
-    const customer = {
-      id: "c-1",
+    await seedUser({
+      id: "11111111-1111-4111-8111-111111111111",
       email: "c@b.com",
       name: "Cust",
       role: "CUSTOMER",
-    };
-    mockUsersByIdAndByEmail({ "c-1": customer });
+    });
     const res = await POST(
       makeReq(
         {
@@ -113,7 +95,11 @@ describe("POST /api/system/auth/register", () => {
           password: "password123",
           role: "ADMIN",
         },
-        tokenFor(customer)
+        tokenForUser(
+          "11111111-1111-4111-8111-111111111111",
+          "c@b.com",
+          "CUSTOMER"
+        )
       ),
       {}
     );
@@ -121,21 +107,11 @@ describe("POST /api/system/auth/register", () => {
   });
 
   it("creates a backoffice user with the requested role for an admin", async () => {
-    mockUsersByIdAndByEmail({
-      "admin-1": {
-        id: "admin-1",
-        email: "a@b.com",
-        name: "Admin",
-        role: "ADMIN",
-      },
-    });
-    (mockedDb.user.create as jest.Mock).mockResolvedValue({
-      id: "new-user",
-      email: "support@example.com",
-      name: "Support",
-      role: "CUSTOMER_SUPPORT",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    await seedUser({
+      id: "22222222-2222-4222-8222-222222222222",
+      email: "a@b.com",
+      name: "Admin",
+      role: "ADMIN",
     });
 
     const res = await POST(
@@ -146,7 +122,7 @@ describe("POST /api/system/auth/register", () => {
           password: "password123",
           role: "CUSTOMER_SUPPORT",
         },
-        adminToken()
+        tokenForUser("22222222-2222-4222-8222-222222222222", "a@b.com", "ADMIN")
       ),
       {}
     );
@@ -154,18 +130,14 @@ describe("POST /api/system/auth/register", () => {
     expect(res.status).toBe(HTTP_STATUS.CREATED);
     const body = await res.json();
     expect(body.user.role).toBe("CUSTOMER_SUPPORT");
-    const createArg = (mockedDb.user.create as jest.Mock).mock.calls[0][0];
-    expect(createArg.data.role).toBe("CUSTOMER_SUPPORT");
   });
 
   it("returns 400 for an invalid role", async () => {
-    mockUsersByIdAndByEmail({
-      "admin-1": {
-        id: "admin-1",
-        email: "a@b.com",
-        name: "Admin",
-        role: "ADMIN",
-      },
+    await seedUser({
+      id: "33333333-3333-4333-8333-333333333333",
+      email: "a2@b.com",
+      name: "Admin",
+      role: "ADMIN",
     });
     const res = await POST(
       makeReq(
@@ -175,7 +147,11 @@ describe("POST /api/system/auth/register", () => {
           password: "password123",
           role: "SUPERUSER",
         },
-        adminToken()
+        tokenForUser(
+          "33333333-3333-4333-8333-333333333333",
+          "a2@b.com",
+          "ADMIN"
+        )
       ),
       {}
     );

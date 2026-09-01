@@ -5,7 +5,7 @@
  * a UI-only concern and should never be sent to the server.
  */
 import { z } from "zod";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/db/schema";
 
 export const BACKOFFICE_ROLES = ["ADMIN", "CUSTOMER_SUPPORT"] as const;
 export type BackofficeRole = (typeof BACKOFFICE_ROLES)[number];

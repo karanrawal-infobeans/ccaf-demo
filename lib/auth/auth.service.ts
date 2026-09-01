@@ -2,7 +2,7 @@
  * Authentication service: register, login, and logout business logic.
  */
 import bcrypt from "bcryptjs";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/db/schema";
 import type { IUserRepository } from "./user.repository";
 import type {
   AuthResult,

@@ -1,34 +1,27 @@
 /**
- * Unit tests for PrismaUserRepository using a mocked PrismaClient.
+ * Integration tests for DrizzleUserRepository against an in-memory Postgres
+ * (pg-mem). Uses the real repository implementation against the real query
+ * builder and a real in-memory database, so no mocking is needed.
  */
-import { PrismaUserRepository, CreateUserData } from "./user.repository";
-import type { PrismaClient, User } from "@prisma/client";
-
-function createMockDb() {
-  return {
-    user: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-    },
-  } as unknown as PrismaClient;
-}
+import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
+import { DrizzleUserRepository, IUserRepository } from "./user.repository";
+import { getTestDb, resetDb } from "@/test/db";
+import { users } from "@/lib/db/schema";
 
 const TEST_EMAIL = "repo-test@example.com";
-const SAMPLE_USER: User = {
-  id: "user-1",
-  email: TEST_EMAIL,
-  name: "Repo Test User",
-  password: "hashed_password",
-  role: "CUSTOMER",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
 
-describe("PrismaUserRepository.create", () => {
+beforeEach(async () => {
+  await resetDb();
+});
+
+function makeRepo(): IUserRepository {
+  return new DrizzleUserRepository(getTestDb());
+}
+
+describe("DrizzleUserRepository.create", () => {
   it("persists a user and returns the created record", async () => {
-    const db = createMockDb();
-    (db.user.create as jest.Mock).mockResolvedValue(SAMPLE_USER);
-    const repo = new PrismaUserRepository(db);
+    const repo = makeRepo();
 
     const result = await repo.create({
       email: TEST_EMAIL,
@@ -36,64 +29,88 @@ describe("PrismaUserRepository.create", () => {
       password: "hashed_password",
     });
 
-    expect(db.user.create).toHaveBeenCalledWith({
-      data: {
-        email: TEST_EMAIL,
-        name: "Repo Test User",
-        password: "hashed_password",
-      },
-    });
-    expect(result.id).toBe("user-1");
+    expect(result.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+    );
     expect(result.email).toBe(TEST_EMAIL);
+    expect(result.role).toBe("CUSTOMER");
+    expect(result.password).toBe("hashed_password");
+    expect(result.createdAt).toBeInstanceOf(Date);
+  });
+
+  it("stores the requested role when provided", async () => {
+    const repo = makeRepo();
+
+    const result = await repo.create({
+      email: "admin-repo@example.com",
+      name: "Admin",
+      password: "hashed_password",
+      role: "ADMIN",
+    });
+
+    expect(result.role).toBe("ADMIN");
   });
 });
 
-describe("PrismaUserRepository.findByEmail", () => {
+describe("DrizzleUserRepository.findByEmail", () => {
   it("returns the user when found", async () => {
-    const db = createMockDb();
-    (db.user.findUnique as jest.Mock).mockResolvedValue(SAMPLE_USER);
-    const repo = new PrismaUserRepository(db);
+    const repo = makeRepo();
+    await repo.create({
+      email: TEST_EMAIL,
+      name: "Repo Test User",
+      password: "hashed_password",
+    });
 
     const found = await repo.findByEmail(TEST_EMAIL);
 
-    expect(db.user.findUnique).toHaveBeenCalledWith({
-      where: { email: TEST_EMAIL },
-    });
     expect(found).not.toBeNull();
     expect(found!.email).toBe(TEST_EMAIL);
+    expect(found!.name).toBe("Repo Test User");
   });
 
   it("returns null when no user matches the email", async () => {
-    const db = createMockDb();
-    (db.user.findUnique as jest.Mock).mockResolvedValue(null);
-    const repo = new PrismaUserRepository(db);
-
+    const repo = makeRepo();
     const found = await repo.findByEmail("nobody@example.com");
     expect(found).toBeNull();
   });
 });
 
-describe("PrismaUserRepository.findById", () => {
+describe("DrizzleUserRepository.findById", () => {
   it("returns the user when found by id", async () => {
-    const db = createMockDb();
-    (db.user.findUnique as jest.Mock).mockResolvedValue(SAMPLE_USER);
-    const repo = new PrismaUserRepository(db);
-
-    const found = await repo.findById("user-1");
-
-    expect(db.user.findUnique).toHaveBeenCalledWith({
-      where: { id: "user-1" },
+    const repo = makeRepo();
+    const created = await repo.create({
+      email: TEST_EMAIL,
+      name: "Repo Test User",
+      password: "hashed_password",
     });
+
+    const found = await repo.findById(created.id);
+
     expect(found).not.toBeNull();
-    expect(found!.id).toBe("user-1");
+    expect(found!.id).toBe(created.id);
   });
 
   it("returns null for a non-existent id", async () => {
-    const db = createMockDb();
-    (db.user.findUnique as jest.Mock).mockResolvedValue(null);
-    const repo = new PrismaUserRepository(db);
-
-    const found = await repo.findById("000000000000000000000000");
+    const repo = makeRepo();
+    const found = await repo.findById("99999999-9999-4999-8999-999999999999");
     expect(found).toBeNull();
+  });
+});
+
+describe("DrizzleUserRepository default role", () => {
+  it("stores CUSTOMER as the default role when none is provided", async () => {
+    const db = getTestDb();
+    const created = await db
+      .insert(users)
+      .values({
+        id: randomUUID(),
+        email: "default-role@example.com",
+        name: "Default",
+        password: "hash",
+      })
+      .returning();
+    const [row] = created;
+    const [fetched] = await db.select().from(users).where(eq(users.id, row.id));
+    expect(fetched.role).toBe("CUSTOMER");
   });
 });
