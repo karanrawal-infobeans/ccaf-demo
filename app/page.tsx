@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { LogoutButton } from "@/components/molecules/LogoutButton";
 
 export default function Home() {
   return (
@@ -63,6 +64,7 @@ export default function Home() {
             Documentation
           </a>
         </div>
+        <LogoutButton className="mt-4" />
       </main>
     </div>
   );

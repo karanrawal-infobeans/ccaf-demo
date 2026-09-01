@@ -34,3 +34,10 @@ export type SystemRegisterFormValues = z.infer<typeof SystemRegisterFormSchema>;
 
 /** Backoffice roles that an admin is allowed to create. */
 export const ALLOWED_BACKOFFICE_ROLES: readonly Role[] = BACKOFFICE_ROLES;
+
+export const LoginFormSchema = z.object({
+  email: z.string().email("Enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export type LoginFormValues = z.infer<typeof LoginFormSchema>;

@@ -1,7 +1,11 @@
 /**
- * Unit tests for the frontend registration validation schemas.
+ * Unit tests for the frontend auth validation schemas.
  */
-import { RegisterFormSchema, SystemRegisterFormSchema } from "./auth";
+import {
+  RegisterFormSchema,
+  SystemRegisterFormSchema,
+  LoginFormSchema,
+} from "./auth";
 
 describe("RegisterFormSchema", () => {
   it("accepts valid input", () => {
@@ -87,6 +91,32 @@ describe("SystemRegisterFormSchema", () => {
       email: "jane@example.com",
       password: "password123",
       confirmPassword: "password123",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("LoginFormSchema", () => {
+  it("accepts valid input", () => {
+    const result = LoginFormSchema.safeParse({
+      email: "user@example.com",
+      password: "password123",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an invalid email", () => {
+    const result = LoginFormSchema.safeParse({
+      email: "not-an-email",
+      password: "password123",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty password", () => {
+    const result = LoginFormSchema.safeParse({
+      email: "user@example.com",
+      password: "",
     });
     expect(result.success).toBe(false);
   });
