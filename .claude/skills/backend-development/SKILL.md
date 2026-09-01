@@ -20,7 +20,7 @@ description: Skill to use while working on backend related tasks. It has guideli
 ### Database
 
 - The project only uses in memory mongodb database. Use the relavant npm package.
-- Use prisma to interact with database.
+- Use drizzle to interact with database.
 
 ### MCP
 
