@@ -2,6 +2,11 @@
 
 ## Shopping Website Clone
 
+- Frontend supports two base level routes
+  - '/' - customer/end user level routes.
+  - '/system' - backoffice level routes.
+- E.g. registration for backoffice level looks like /system/registration. for customers it looks like /registration.
+
 # Guidelines
 
 ## Development Guidlines
