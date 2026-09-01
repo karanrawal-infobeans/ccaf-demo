@@ -2,8 +2,15 @@
  * Authentication service: register, login, and logout business logic.
  */
 import bcrypt from "bcryptjs";
+import type { Role } from "@prisma/client";
 import type { IUserRepository } from "./user.repository";
-import type { AuthResult, LoginResult, RegisterDto, LoginDto } from "./types";
+import type {
+  AuthResult,
+  LoginResult,
+  RegisterDto,
+  LoginDto,
+  SystemRegisterDto,
+} from "./types";
 import {
   EmailAlreadyRegisteredError,
   InvalidCredentialsError,
@@ -15,6 +22,7 @@ import { logger } from "@/lib/logger";
 
 export interface IAuthService {
   register(dto: RegisterDto): Promise<AuthResult>;
+  registerWithRole(dto: SystemRegisterDto): Promise<AuthResult>;
   login(dto: LoginDto): Promise<LoginResult>;
   logout(userId?: string): Promise<void>;
 }
@@ -24,6 +32,19 @@ export class AuthService implements IAuthService {
 
   /** Registers a new CUSTOMER. Throws if the email is already taken. */
   async register(dto: RegisterDto): Promise<AuthResult> {
+    return this.createUser(dto, undefined);
+  }
+
+  /** Registers a backoffice user (ADMIN/CUSTOMER_SUPPORT) with a given role. */
+  async registerWithRole(dto: SystemRegisterDto): Promise<AuthResult> {
+    return this.createUser(dto, dto.role);
+  }
+
+  /** Shared registration logic used by customer and backoffice registration. */
+  private async createUser(
+    dto: { email: string; name: string; password: string },
+    role?: Role
+  ): Promise<AuthResult> {
     try {
       const existing = await this.userRepo.findByEmail(dto.email);
       if (existing) {
@@ -34,9 +55,10 @@ export class AuthService implements IAuthService {
         email: dto.email,
         name: dto.name,
         password: hashedPassword,
+        role,
       });
       logger.info(
-        { userId: user.id, email: user.email },
+        { userId: user.id, email: user.email, role: user.role },
         "user.register.success"
       );
       return {

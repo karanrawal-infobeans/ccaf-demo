@@ -37,7 +37,11 @@ describe("PrismaUserRepository.create", () => {
     });
 
     expect(db.user.create).toHaveBeenCalledWith({
-      data: { email: TEST_EMAIL, name: "Repo Test User", password: "hashed_password" },
+      data: {
+        email: TEST_EMAIL,
+        name: "Repo Test User",
+        password: "hashed_password",
+      },
     });
     expect(result.id).toBe("user-1");
     expect(result.email).toBe(TEST_EMAIL);
@@ -52,7 +56,9 @@ describe("PrismaUserRepository.findByEmail", () => {
 
     const found = await repo.findByEmail(TEST_EMAIL);
 
-    expect(db.user.findUnique).toHaveBeenCalledWith({ where: { email: TEST_EMAIL } });
+    expect(db.user.findUnique).toHaveBeenCalledWith({
+      where: { email: TEST_EMAIL },
+    });
     expect(found).not.toBeNull();
     expect(found!.email).toBe(TEST_EMAIL);
   });
@@ -75,7 +81,9 @@ describe("PrismaUserRepository.findById", () => {
 
     const found = await repo.findById("user-1");
 
-    expect(db.user.findUnique).toHaveBeenCalledWith({ where: { id: "user-1" } });
+    expect(db.user.findUnique).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+    });
     expect(found).not.toBeNull();
     expect(found!.id).toBe("user-1");
   });

@@ -130,6 +130,47 @@ describe("AuthService.login", () => {
   });
 });
 
+describe("AuthService.registerWithRole", () => {
+  it("passes the requested role to the repository", async () => {
+    const createdUser = makeUser({
+      email: "admin@example.com",
+      name: "Admin",
+      role: "ADMIN",
+    });
+    const repo: IUserRepository = {
+      create: jest.fn().mockResolvedValue(createdUser),
+      findByEmail: jest.fn().mockResolvedValue(null),
+      findById: jest.fn().mockResolvedValue(null),
+    };
+    const service = new AuthService(repo);
+
+    const result = await service.registerWithRole({
+      email: "admin@example.com",
+      name: "Admin",
+      password: "password123",
+      role: "ADMIN",
+    });
+
+    expect(result.role).toBe("ADMIN");
+    const callArg = (repo.create as jest.Mock).mock.calls[0][0];
+    expect(callArg.role).toBe("ADMIN");
+  });
+
+  it("throws EmailAlreadyRegisteredError for a duplicate email", async () => {
+    const repo = makeMockRepo(makeUser());
+    const service = new AuthService(repo);
+
+    await expect(
+      service.registerWithRole({
+        email: "user@example.com",
+        name: "X",
+        password: "password123",
+        role: "CUSTOMER_SUPPORT",
+      })
+    ).rejects.toBeInstanceOf(EmailAlreadyRegisteredError);
+  });
+});
+
 describe("AuthService.logout", () => {
   it("resolves without error for an anonymous user", async () => {
     const repo = makeMockRepo(null);
